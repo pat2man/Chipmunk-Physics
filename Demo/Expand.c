@@ -30,7 +30,11 @@ static cpSpace *space;
 
 static float height = 50;
 static float width = 400;
-static float expandSpeed = 0;
+
+// Using the change in scale seemed easier to use in calculations.
+// Storing the x/y scale separately to better match your demo.
+static cpVect expandScaleDt = {1.0, 1.0};
+
 static cpBody *expandBody = NULL;
 static cpShape *expandShape = NULL;
 
@@ -38,12 +42,20 @@ static cpBool
 preSolve(cpArbiter *arb, cpSpace *space, void *ignore)
 {
   CP_ARBITER_GET_BODIES(arb, expander, other);
+	
+	cpFloat inv_dt = 1.0/cpSpaceGetCurrentTimeStep(space);
+	
   int count = cpArbiterGetCount(arb);
   for(int i = 0; i < count; i++)
   {
-    float pointSpeed = (cpBodyWorld2Local(expander, cpArbiterGetPoint(arb, i)).x / (width/2)) * (expandSpeed/6);
-    cpArbiterSetSurfaceVelocity(arb, i, cpv(-pointSpeed, 0));
+		// So at any particular contact point, the surface would be moving at localPoint*(1.0 - expandScaleDt)/dt (I think?)
+		cpVect localPoint = cpBodyWorld2Local(expander, cpArbiterGetPoint(arb, i));
+		cpVect surfaceV = cpv(localPoint.x*(1.0 - expandScaleDt.x)*inv_dt, localPoint.y*(expandScaleDt.y - 1.0)*inv_dt);
+		
+		// Just need to rotate the surface velocity back to absolute coords
+		cpArbiterSetSurfaceVelocity(arb, i, cpvunrotate(cpBodyGetRot(expander), surfaceV));
   }
+		ChipmunkDemoPrintString("\n");
 
   return cpTrue;
 }
@@ -54,20 +66,34 @@ update(int ticks)
 	// Step the space
 	int steps = 3;
 	cpFloat dt = 1.0f/60.0f/(cpFloat)steps;
-
-	cpVect verts[] = {
-		cpv(-width/2,-height/2),
-		cpv(-width/2, height/2),
-		cpv( width/2, height/2),
-		cpv( width/2,-height/2),
-	};
-
-        cpPolyShapeSetVerts(expandShape, 4, verts, cpvzero);
-
-        expandSpeed = 500*ChipmunkDemoKeyboard.x;
-        width += expandSpeed*dt;
+	
 
 	for(int i=0; i<steps; i++){
+		// This all needs to happen inside the fixed timestep.
+		
+		cpVect expandSpeed = cpv(100.0*ChipmunkDemoKeyboard.x*dt, 100*ChipmunkDemoKeyboard.y*dt);
+		cpFloat newWidth = cpfmax(50.0, width + expandSpeed.x);
+		cpFloat newHeight = cpfmax(50.0, height + expandSpeed.y);
+		
+		expandScaleDt = cpv(newWidth/width, newHeight/height);
+		height = newHeight;
+		width = newWidth;
+//		width = cpfmax(50.0, width*expandScaleDt.x);
+//		height = cpfmax(50.0, height*expandScaleDt.y);
+		
+		cpVect verts[] = {
+			cpv(-width/2,-height/2),
+			cpv(-width/2, height/2),
+			cpv( width/2, height/2),
+			cpv( width/2,-height/2),
+		};
+		
+		cpPolyShapeSetVerts(expandShape, 4, verts, cpvzero);
+		
+		// I wanted to see how it reacted when recalculating the moment as well.
+		cpBodySetMoment(expandBody, cpMomentForBox(cpBodyGetMass(expandBody), width, height));
+		
+		
 		cpSpaceStep(space, dt);
 	}
 }
@@ -101,13 +127,16 @@ init(void)
 	shape->e = 1.0f; shape->u = 1.0f;
 	shape->layers = NOT_GRABABLE_MASK;
 	
+	height = 50;
+	width = 400;
+	
 	// Set up the box
 	cpFloat radius = 25.0f;
-	body = cpSpaceAddBody(space, cpBodyNew(1.0f, INFINITY));
+	body = cpSpaceAddBody(space, cpBodyNew(10.0f, cpMomentForBox(10.0, width, height)));
         expandBody = body;
 	cpBodySetPos(body, cpv(0, -200));
 
-	shape = cpSpaceAddShape(space, cpBoxShapeNew(body, 50, 50));
+	shape = cpSpaceAddShape(space, cpBoxShapeNew(body, width, height));
         expandShape = shape;
 	cpShapeSetElasticity(shape, 0.0f);
 	cpShapeSetFriction(shape, 0.9f);
@@ -121,10 +150,10 @@ init(void)
           shape = cpSpaceAddShape(space, cpBoxShapeNew(body, 50, 50));
           cpShapeSetElasticity(shape, 0.0f);
           cpShapeSetFriction(shape, 0.9f);
-          cpShapeSetCollisionType(shape, 2);
+          cpShapeSetCollisionType(shape, 0);
 	}
 	
-	cpSpaceAddCollisionHandler(space, 1, 2, NULL, preSolve, NULL, NULL, NULL);
+	cpSpaceAddCollisionHandler(space, 1, 0, NULL, preSolve, NULL, NULL, NULL);
 
 	return space;
 }
