@@ -232,6 +232,10 @@ cpBodySetAngle(cpBody *body, cpFloat angle)
 void
 cpBodyUpdateVelocity(cpBody *body, cpVect gravity, cpFloat damping, cpFloat dt)
 {
+	if(body->isSecondary){
+		gravity = cpvrotate(gravity, body->doppelgangerRot);
+	}
+	
 	body->v = cpvclamp(cpvadd(cpvmult(body->v, damping), cpvmult(cpvadd(gravity, cpvmult(body->f, body->m_inv)), dt)), body->v_limit);
 	
 	cpFloat w_limit = body->w_limit;

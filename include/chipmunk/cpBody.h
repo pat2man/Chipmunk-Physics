@@ -87,6 +87,10 @@ struct cpBody {
 	/// Maximum rotational rate (in radians/second) allowed when updating the angular velocity.
 	cpFloat w_limit;
 	
+	struct cpBody *doppelganger;
+	cpVect doppelgangerRot;
+	cpBool isSecondary;
+	
 	CP_PRIVATE(cpVect v_bias);
 	CP_PRIVATE(cpFloat w_bias);
 	

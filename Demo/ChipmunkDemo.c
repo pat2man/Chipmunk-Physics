@@ -573,7 +573,7 @@ int
 main(int argc, const char **argv)
 {
 	ChipmunkDemo demo_list[] = {
-		LogoSmash,
+//		LogoSmash,
 		PyramidStack,
 		Plink,
 		BouncyHexagons,

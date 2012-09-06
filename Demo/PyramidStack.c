@@ -41,10 +41,10 @@ init(void)
 	space = cpSpaceNew();
 	cpSpaceSetIterations(space, 30);
 	cpSpaceSetGravity(space, cpv(0, -100));
-	cpSpaceSetSleepTimeThreshold(space, 0.5f);
+//	cpSpaceSetSleepTimeThreshold(space, 0.5f);
 	cpSpaceSetCollisionSlop(space, 0.5f);
 	
-	cpBody *body, *staticBody = cpSpaceGetStaticBody(space);
+	cpBody *staticBody = cpSpaceGetStaticBody(space);
 	cpShape *shape;
 	
 	// Create segments around the edge of the screen.
@@ -63,26 +63,38 @@ init(void)
 	cpShapeSetFriction(shape, 1.0f);
 	cpShapeSetLayers(shape, NOT_GRABABLE_MASK);
 	
-	// Add lots of boxes.
-	for(int i=0; i<14; i++){
-		for(int j=0; j<=i; j++){
-			body = cpSpaceAddBody(space, cpBodyNew(1.0f, cpMomentForBox(1.0f, 30.0f, 30.0f)));
-			cpBodySetPos(body, cpv(j*32 - i*16, 300 - i*32));
-			
-			shape = cpSpaceAddShape(space, cpBoxShapeNew(body, 30.0f, 30.0f));
-			cpShapeSetElasticity(shape, 0.0f);
-			cpShapeSetFriction(shape, 0.8f);
-		}
-	}
+	shape = cpSpaceAddShape(space, cpSegmentShapeNew(staticBody, cpv(-320, 240), cpv(320, 240), 0.0f));
+	cpShapeSetElasticity(shape, 1.0f);
+	cpShapeSetFriction(shape, 1.0f);
+	cpShapeSetLayers(shape, NOT_GRABABLE_MASK);
 	
-	// Add a ball to make things more interesting
+	// Make the regular ball first
 	cpFloat radius = 15.0f;
-	body = cpSpaceAddBody(space, cpBodyNew(10.0f, cpMomentForCircle(10.0f, 0.0f, radius, cpvzero)));
-	cpBodySetPos(body, cpv(0, -240 + radius+5));
+	cpBody *body1 = cpSpaceAddBody(space, cpBodyNew(10.0f, cpMomentForCircle(10.0f, 0.0f, radius, cpvzero)));
+	cpBodySetPos(body1, cpv(0, -100));
 
-	shape = cpSpaceAddShape(space, cpCircleShapeNew(body, radius, cpvzero));
+	shape = cpSpaceAddShape(space, cpCircleShapeNew(body1, radius, cpvzero));
 	cpShapeSetElasticity(shape, 0.0f);
 	cpShapeSetFriction(shape, 0.9f);
+	
+	
+	// Now make the doppelganger ball
+	cpBody *body2 = cpSpaceAddBody(space, cpBodyNew(10.0f, cpMomentForCircle(10.0f, 0.0f, radius, cpvzero)));
+	cpBodySetPos(body2, cpv(100, -100));
+
+	shape = cpSpaceAddShape(space, cpCircleShapeNew(body2, radius, cpvzero));
+	cpShapeSetElasticity(shape, 0.0f);
+	cpShapeSetFriction(shape, 0.9f);
+	
+	// wire them together
+	cpVect rot = cpvforangle(-M_PI/4); // 45 degrees
+	
+	body1->doppelganger = body2;
+	body1->doppelgangerRot = rot;
+	
+	body2->doppelganger = body1;
+	body2->doppelgangerRot = cpv(rot.x, -rot.y); // conjugate
+	body2->isSecondary = cpTrue;
 	
 	return space;
 }

@@ -46,6 +46,16 @@ static inline void
 apply_impulse(cpBody *body, cpVect j, cpVect r){
 	body->v = cpvadd(body->v, cpvmult(j, body->m_inv));
 	body->w += body->i_inv*cpvcross(r, j);
+	
+	if(body->doppelganger){
+		cpVect rot = body->doppelgangerRot;
+		j = cpvunrotate(j, rot);
+		r = cpvunrotate(r, rot);
+		body = body->doppelganger;
+		
+		body->v = cpvadd(body->v, cpvmult(j, body->m_inv));
+		body->w += body->i_inv*cpvcross(r, j);
+	}
 }
 
 static inline void
@@ -60,6 +70,16 @@ apply_bias_impulse(cpBody *body, cpVect j, cpVect r)
 {
 	body->CP_PRIVATE(v_bias) = cpvadd(body->CP_PRIVATE(v_bias), cpvmult(j, body->m_inv));
 	body->CP_PRIVATE(w_bias) += body->i_inv*cpvcross(r, j);
+	
+	if(body->doppelganger){
+		cpVect rot = body->doppelgangerRot;
+		j = cpvunrotate(j, rot);
+		r = cpvunrotate(r, rot);
+		body = body->doppelganger;
+		
+		body->CP_PRIVATE(v_bias) = cpvadd(body->CP_PRIVATE(v_bias), cpvmult(j, body->m_inv));
+		body->CP_PRIVATE(w_bias) += body->i_inv*cpvcross(r, j);
+	}
 }
 
 static inline void
