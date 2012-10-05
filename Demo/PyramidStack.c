@@ -22,9 +22,34 @@
 #include "chipmunk.h"
 #include "ChipmunkDemo.h"
 
+cpBody *mouseRogue;
+
+static cpBool
+Begin(cpArbiter *arb, cpSpace *space, void *data)
+{
+	printf("Begin\n");
+	return cpTrue;
+}
+
+static cpBool
+PreSolve(cpArbiter *arb, cpSpace *space, void *data)
+{
+	printf("PreSolve\n");
+	return cpTrue;
+}
+
+static void
+Separate(cpArbiter *arb, cpSpace *space, void *data)
+{
+	printf("Separate\n");
+}
+
+
 static void
 update(cpSpace *space)
 {
+	cpBodySetPos(mouseRogue, ChipmunkDemoMouse);
+	
 	int steps = 3;
 	cpFloat dt = 1.0f/60.0f/(cpFloat)steps;
 	
@@ -37,50 +62,34 @@ static cpSpace *
 init(void)
 {
 	cpSpace *space = cpSpaceNew();
-	cpSpaceSetIterations(space, 30);
-	cpSpaceSetGravity(space, cpv(0, -100));
-	cpSpaceSetSleepTimeThreshold(space, 0.5f);
-	cpSpaceSetCollisionSlop(space, 0.5f);
+//	cpSpaceSetIterations(space, 30);
+//	cpSpaceSetGravity(space, cpv(0, -100));
+//	cpSpaceSetSleepTimeThreshold(space, 0.5f);
+//	cpSpaceSetCollisionSlop(space, 0.5f);
 	
-	cpBody *body, *staticBody = cpSpaceGetStaticBody(space);
-	cpShape *shape;
-	
-	// Create segments around the edge of the screen.
-	shape = cpSpaceAddShape(space, cpSegmentShapeNew(staticBody, cpv(-320,-240), cpv(-320,240), 0.0f));
-	cpShapeSetElasticity(shape, 1.0f);
-	cpShapeSetFriction(shape, 1.0f);
-	cpShapeSetLayers(shape, NOT_GRABABLE_MASK);
+	{
+		cpFloat radius = 15.0f;
+		cpBody *body = cpBodyNew(10.0f, cpMomentForCircle(10.0f, 0.0f, radius, cpvzero));
 
-	shape = cpSpaceAddShape(space, cpSegmentShapeNew(staticBody, cpv(320,-240), cpv(320,240), 0.0f));
-	cpShapeSetElasticity(shape, 1.0f);
-	cpShapeSetFriction(shape, 1.0f);
-	cpShapeSetLayers(shape, NOT_GRABABLE_MASK);
-
-	shape = cpSpaceAddShape(space, cpSegmentShapeNew(staticBody, cpv(-320,-240), cpv(320,-240), 0.0f));
-	cpShapeSetElasticity(shape, 1.0f);
-	cpShapeSetFriction(shape, 1.0f);
-	cpShapeSetLayers(shape, NOT_GRABABLE_MASK);
-	
-	// Add lots of boxes.
-	for(int i=0; i<14; i++){
-		for(int j=0; j<=i; j++){
-			body = cpSpaceAddBody(space, cpBodyNew(1.0f, cpMomentForBox(1.0f, 30.0f, 30.0f)));
-			cpBodySetPos(body, cpv(j*32 - i*16, 300 - i*32));
-			
-			shape = cpSpaceAddShape(space, cpBoxShapeNew(body, 30.0f, 30.0f));
-			cpShapeSetElasticity(shape, 0.0f);
-			cpShapeSetFriction(shape, 0.8f);
-		}
+		cpShape *shape = cpSpaceAddShape(space, cpCircleShapeNew(body, radius, cpvzero));
+		cpShapeSetElasticity(shape, 0.0f);
+		cpShapeSetFriction(shape, 0.9f);
+		cpShapeSetSensor(shape, true);
 	}
 	
-	// Add a ball to make things more interesting
-	cpFloat radius = 15.0f;
-	body = cpSpaceAddBody(space, cpBodyNew(10.0f, cpMomentForCircle(10.0f, 0.0f, radius, cpvzero)));
-	cpBodySetPos(body, cpv(0, -240 + radius+5));
+	{
+		cpFloat radius = 15.0f;
+		cpBody *body = cpBodyNew(10.0f, cpMomentForCircle(10.0f, 0.0f, radius, cpvzero));
 
-	shape = cpSpaceAddShape(space, cpCircleShapeNew(body, radius, cpvzero));
-	cpShapeSetElasticity(shape, 0.0f);
-	cpShapeSetFriction(shape, 0.9f);
+		cpShape *shape = cpSpaceAddShape(space, cpCircleShapeNew(body, radius, cpvzero));
+		cpShapeSetElasticity(shape, 0.0f);
+		cpShapeSetFriction(shape, 0.9f);
+		cpShapeSetSensor(shape, true);
+		
+		mouseRogue = body;
+	}
+	
+	cpSpaceAddCollisionHandler(space, 0, 0, Begin, PreSolve, NULL, Separate, NULL);
 	
 	return space;
 }
